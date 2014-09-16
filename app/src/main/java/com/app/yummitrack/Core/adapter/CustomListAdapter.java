@@ -65,7 +65,7 @@ public class CustomListAdapter extends BaseAdapter {
         TextView genre = (TextView) convertView.findViewById(R.id.genre);
         TextView year = (TextView) convertView.findViewById(R.id.releaseYear);
 
-        // getting movie data for the row
+        // getting data for the row
         Promo m = promoItem.get(position);
 
         // thumbnail image
