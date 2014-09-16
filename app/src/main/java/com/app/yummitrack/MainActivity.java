@@ -1,32 +1,26 @@
 package com.app.yummitrack;
 
-import android.support.v4.app.FragmentTransaction;
+import android.app.Activity;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentManager;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.util.Log;
+import android.view.LayoutInflater;
 import com.facebook.*;
+import com.facebook.model.GraphUser;
 import com.facebook.widget.LoginButton;
 
 import android.content.Intent;
+import android.widget.LinearLayout;
 
 import java.util.Arrays;
 
-public class MainActivity extends FragmentActivity {
-    private SplashFragment splashFragment; // Logcat
-
-    // Fragmentss
-    private static final int SPLASH = 0;
-    private static final int SELECTION = 1;
-    private static final int SETTINGS = 2;
-    private static final int FRAGMENT_COUNT = 3; // Slash, Selection and Settings = 3
-    private Fragment[] fragments = new Fragment[FRAGMENT_COUNT];
-
+/*
+* Activity that handles login process
+* */
+public class MainActivity extends Activity {
     private boolean isResumed = false;
-    private MenuItem settings;
 
+    String email, GUemail;
+    String TAG = "Main";
     // In order to track the session and trigger a session state change listener
     private UiLifecycleHelper uiHelper;
     private Session.StatusCallback callback =
@@ -43,86 +37,59 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
         uiHelper = new UiLifecycleHelper(this, callback);
         uiHelper.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main);
-
-        FragmentManager fm = getSupportFragmentManager();
-        fragments[SPLASH] = fm.findFragmentById(R.id.splashFragment);
-        fragments[SELECTION] = fm.findFragmentById(R.id.selectionFragment);
-        fragments[SETTINGS] = fm.findFragmentById(R.id.userSettingsFragment);
-
-        FragmentTransaction transaction = fm.beginTransaction();
-        for(int i = 0; i < fragments.length; i++) {
-            transaction.hide(fragments[i]);
-        }
-        transaction.commit();
-
-    }
-
-    private void showFragment(int fragmentIndex, boolean addToBackStack) {
-        FragmentManager fm = getSupportFragmentManager();
-        FragmentTransaction transaction = fm.beginTransaction();
-        for (int i = 0; i < fragments.length; i++) {
-            if (i == fragmentIndex) {
-                transaction.show(fragments[i]);
-            } else {
-                transaction.hide(fragments[i]);
-            }
-        }
-        if (addToBackStack) {
-            transaction.addToBackStack(null);
-        }
-        transaction.commit();
+        LayoutInflater inflater = getLayoutInflater();
+        LinearLayout layout = (LinearLayout) inflater.inflate(R.layout.activity_main, null);
+        LoginButton authButton = (LoginButton) layout.findViewById(R.id.login_button);
+        authButton.setReadPermissions(Arrays.asList("public_profile", "user_likes", "email"));
     }
 
     private void onSessionStateChange(Session session, SessionState state, Exception exception) {
         // Only make changes if the activity is visible
         if (isResumed) {
-            FragmentManager manager = getSupportFragmentManager();
-            // Get the number of entries in the back stack
-            int backStackSize = manager.getBackStackEntryCount();
-            // Clear the back stack
-            for (int i = 0; i < backStackSize; i++) {
-                manager.popBackStack();
-            }
             if (state.isOpened()) {
                 // If the session state is open:
-                // Show the authenticated fragment
-                showFragment(SELECTION, false);
+                // Get user info -> Send this to webservice
+                Log.i(TAG, "Logged in...");
+
+                // Get user info
+                new Request(
+                        session,
+                        "/me",
+                        null,
+                        HttpMethod.GET,
+                        new Request.Callback() {
+                            public void onCompleted(Response response) {
+                                email = response.getGraphObject().getProperty("email").toString();
+                                Log.i(TAG, "Email: " + email);
+                            }
+                        }
+                ).executeAsync();
+
+                // Another way to ask for info, don't know which one is better
+                Request.newMeRequest(session, new Request.GraphUserCallback() {
+                    @Override
+                    public void onCompleted(GraphUser user, Response response) {
+                        if(user != null) {
+                            GUemail = user.getProperty("email").toString();
+                            Log.i(TAG, "Email graphicuser: " + GUemail);
+                        }
+                    }
+                }).executeAsync();
+
+                // -> DashboardActivity
+                Intent intent = new Intent(this, DashboardActivity.class);
+                startActivity(intent);
+                finish();
             } else if (state.isClosed()) {
-                // If the session state is closed:
-                // Show the login fragment
+                // If is closed, (clear token just in case)
                 Session.getActiveSession().closeAndClearTokenInformation();
-                showFragment(SPLASH, false);
             }
         }
-    }
-
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        // only add the menu when the selection fragment is showing
-        if (fragments[SELECTION].isVisible()) {
-            if (menu.size() == 0) {
-                settings = menu.add(R.string.settings);
-            }
-            return true;
-        } else {
-            menu.clear();
-            settings = null;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.equals(settings)) {
-            showFragment(SETTINGS, true);
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -165,29 +132,5 @@ public class MainActivity extends FragmentActivity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         uiHelper.onSaveInstanceState(outState);
-    }
-
-    @Override
-    protected void onResumeFragments() {
-        super.onResumeFragments();
-        Session session = Session.getActiveSession();
-
-        if (session != null && session.isOpened()) {
-            // if the session is already open,
-            // try to show the selection fragment
-            showFragment(SELECTION, false);
-        } else {
-            // otherwise present the splash screen
-            // and ask the person to login.
-            Session.getActiveSession().closeAndClearTokenInformation();
-            showFragment(SPLASH, false);
-        }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
     }
 }
