@@ -42,7 +42,7 @@ public class FeedFragment extends Fragment {
     // Promotions json url
     private static final String url = "https://api.myjson.com/bins/1jj0t";
     private ProgressDialog pDialog;
-    private List<Promo> movieList = new ArrayList<Promo>();
+    private List<Promo> promoList = new ArrayList<Promo>();
     private ListView listView;
     private CustomListAdapter adapter;
 
@@ -59,7 +59,7 @@ public class FeedFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
 
         //listView = (ListView) findViewById(R.id.list);
-        adapter = new CustomListAdapter(getActivity(), movieList);
+        adapter = new CustomListAdapter(getActivity(), promoList);
         feedListView.setAdapter(adapter);
 
         pDialog = new ProgressDialog(getActivity());
@@ -72,7 +72,7 @@ public class FeedFragment extends Fragment {
                 new ColorDrawable(Color.parseColor("#1b1b1b")));
 
         // Creating volley request obj
-        JsonArrayRequest movieReq = new JsonArrayRequest(url,
+        JsonArrayRequest promoReq = new JsonArrayRequest(url,
                 new Response.Listener<JSONArray>() {
                     @Override
                     public void onResponse(JSONArray response) {
@@ -84,12 +84,12 @@ public class FeedFragment extends Fragment {
                             try {
 
                                 JSONObject obj = response.getJSONObject(i);
-                                Promo movie = new Promo();
-                                movie.setTitle(obj.getString("title"));
-                                movie.setThumbnailUrl(obj.getString("image"));
-                                movie.setRating(((Number) obj.get("rating"))
+                                Promo promo = new Promo();
+                                promo.setTitle(obj.getString("title"));
+                                promo.setThumbnailUrl(obj.getString("image"));
+                                promo.setRating(((Number) obj.get("rating"))
                                         .doubleValue());
-                                movie.setYear(obj.getInt("releaseYear"));
+                                promo.setYear(obj.getInt("releaseYear"));
 
                                 // Genre is json array
                                 JSONArray genreArray = obj.getJSONArray("genre");
@@ -97,10 +97,10 @@ public class FeedFragment extends Fragment {
                                 for (int j = 0; j < genreArray.length(); j++) {
                                     genre.add((String) genreArray.get(j));
                                 }
-                                movie.setGenre(genre);
+                                promo.setGenre(genre);
 
                                 // adding movie to movies array
-                                movieList.add(movie);
+                                promoList.add(promo);
 
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -122,7 +122,7 @@ public class FeedFragment extends Fragment {
         });
 
         // Adding request to request queue
-        AppController.getInstance().addToRequestQueue(movieReq);
+        AppController.getInstance().addToRequestQueue(promoReq);
     }
 
     @Override
